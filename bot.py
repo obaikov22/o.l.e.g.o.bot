@@ -198,6 +198,21 @@ async def close_ticket(interaction: discord.Interaction):
     await asyncio.sleep(5)
     await interaction.channel.delete()
 
+@tree.command(name="send_message_with_file", description="Отправить сообщение с медиа в канал")
+@is_admin()
+@app_commands.describe(channel="Канал для отправки", content="Текст сообщения", file="Файл или изображение")
+async def send_message_with_file(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel,
+    content: str,
+    file: discord.Attachment
+):
+    try:
+        await channel.send(content, file=await file.to_file())
+        await interaction.response.send_message("✅ Сообщение с медиа отправлено!", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Ошибка отправки: {e}", ephemeral=True)
+
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 

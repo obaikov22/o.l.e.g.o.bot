@@ -10,11 +10,10 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-active_tickets = {}  # user_id: channel_id
-ticket_locks = {}    # user_id: Lock
-ticket_message_ids = set()  # message IDs для реакции 🎫
+active_tickets = {}
+ticket_locks = {}
+ticket_message_ids = set()
 
-# 🔐 Проверка на админа
 def is_admin():
     async def predicate(interaction: discord.Interaction):
         return interaction.user.guild_permissions.administrator
@@ -29,7 +28,23 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Ошибка синхронизации: {e}")
 
-# 🎛️ Панель администратора
+# DM логирование
+@bot.event
+async def on_message(message):
+    if message.guild is None and not message.author.bot:
+        log_channel_id = os.getenv("DM_LOG_CHANNEL_ID")
+        if log_channel_id:
+            log_channel = bot.get_channel(int(log_channel_id))
+            if log_channel:
+                embed = discord.Embed(
+                    title="📨 Личное сообщение боту",
+                    description=message.content,
+                    color=discord.Color.blurple()
+                )
+                embed.set_author(name=str(message.author), icon_url=message.author.display_avatar.url)
+                await log_channel.send(embed=embed)
+    await bot.process_commands(message)
+
 class AdminPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -58,15 +73,13 @@ class CreateTicketButton(Button):
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.send_modal(CreateTicketModal())
 
-# 🧾 Модалки
 class SendMessageModal(Modal, title="📣 Отправка сообщения"):
     channel = TextInput(label="Название или ID канала", placeholder="#общий")
     content = TextInput(label="Сообщение", style=discord.TextStyle.paragraph)
 
     async def on_submit(self, interaction: discord.Interaction):
         try:
-            channel = discord.utils.get(interaction.guild.text_channels, name=self.channel.value.strip('#')) \
-                      or interaction.guild.get_channel(int(self.channel.value))
+            channel = discord.utils.get(interaction.guild.text_channels, name=self.channel.value.strip('#'))                       or interaction.guild.get_channel(int(self.channel.value))
             await channel.send(self.content.value)
             await interaction.response.send_message("✅ Сообщение отправлено.", ephemeral=True)
         except:
@@ -113,16 +126,14 @@ class CreateTicketModal(Modal, title="🎫 Создание тикета"):
 
         active_tickets[user.id] = ticket_channel.id
         await ticket_channel.send(f"{user.mention}, ваш тикет создан! Напишите, в чём проблема.")
-        await interaction.response.send_message(f"📩 Тикет создан: {ticket_channel.mention}", ephemeral=True)
+        await interaction.response.send_message("📩 Тикет создан.", ephemeral=True)
 
-# 📥 Команда: панель админа
 @tree.command(name="admin_panel", description="Открыть панель управления")
 @is_admin()
 async def admin_panel(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     await interaction.followup.send("🔧 Панель администратора", view=AdminPanel(), ephemeral=True)
 
-# 📌 Команда: сообщение с реакцией 🎫
 @tree.command(name="setup_ticket_message", description="Создать сообщение с тикет-реакцией")
 @is_admin()
 async def setup_ticket_message(interaction: discord.Interaction):
@@ -132,7 +143,6 @@ async def setup_ticket_message(interaction: discord.Interaction):
     ticket_message_ids.add(message.id)
     await interaction.followup.send("✅ Сообщение с реакцией создано.", ephemeral=True)
 
-# 🎫 Реакция на тикет
 @bot.event
 async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id or str(payload.emoji) != "🎫":
@@ -151,13 +161,9 @@ async def on_raw_reaction_add(payload):
 
     async with ticket_locks[user.id]:
         if user.id in active_tickets:
-            try:
-                await user.send("❗ У вас уже есть открытый тикет.")
-            except:
-                pass
             return
 
-        active_tickets[user.id] = -1  # Защита
+        active_tickets[user.id] = -1
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -176,14 +182,8 @@ async def on_raw_reaction_add(payload):
         )
 
         active_tickets[user.id] = ticket_channel.id
-
         await ticket_channel.send(f"{user.mention}, ваш тикет создан! Напишите, в чём проблема.")
-        try:
-            await user.send(f"📩 Ваш тикет создан: {ticket_channel.mention}")
-        except:
-            pass
 
-# ❌ Закрытие тикета
 @tree.command(name="close_ticket", description="Закрыть тикет")
 @is_admin()
 async def close_ticket(interaction: discord.Interaction):
@@ -198,9 +198,7 @@ async def close_ticket(interaction: discord.Interaction):
     await asyncio.sleep(5)
     await interaction.channel.delete()
 
-# 🪟 Windows Fix
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# 🔑 Запуск
 bot.run(os.getenv("DISCORD_TOKEN"))

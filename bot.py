@@ -99,10 +99,14 @@ class CreateTicketModal(Modal, title="🎫 Создание тикета"):
             guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
         }
 
+        category_id = os.getenv("TICKET_CATEGORY_ID")
+        category = guild.get_channel(int(category_id)) if category_id else None
+
         ticket_channel = await guild.create_text_channel(
             name=f"ticket-{user.name}-{user.discriminator}",
             overwrites=overwrites,
-            topic=self.issue.value
+            topic=f"Тикет от {user.name}",
+            category=category
         )
 
         active_tickets[user.id] = ticket_channel.id

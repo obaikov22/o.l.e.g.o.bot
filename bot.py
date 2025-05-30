@@ -139,6 +139,7 @@ async def on_raw_reaction_add(payload):
     if not user or user.bot:
         return
 
+    # Уже создан тикет? Проверим в active_tickets
     if user.id in active_tickets:
         try:
             await user.send("❗ У вас уже есть открытый тикет.")
@@ -146,24 +147,33 @@ async def on_raw_reaction_add(payload):
             pass
         return
 
+    # Установим ID как будто уже создаём — защитим от дублирования
+    active_tickets[user.id] = -1
+
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
         user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
     }
 
+    category_id = os.getenv("TICKET_CATEGORY_ID")
+    category = guild.get_channel(int(category_id)) if category_id else None
+
     ticket_channel = await guild.create_text_channel(
         name=f"ticket-{user.name}-{user.discriminator}",
         overwrites=overwrites,
-        topic=f"Тикет от {user.name}"
+        topic=f"Тикет от {user.name}",
+        category=category
     )
 
     active_tickets[user.id] = ticket_channel.id
+
     await ticket_channel.send(f"{user.mention}, ваш тикет создан! Напишите, в чём проблема.")
     try:
         await user.send(f"📩 Ваш тикет создан: {ticket_channel.mention}")
     except:
         pass
+
 
 # ❌ Команда: закрыть тикет
 @tree.command(name="close_ticket", description="Закрыть текущий тикет")

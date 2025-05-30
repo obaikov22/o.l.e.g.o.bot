@@ -2,6 +2,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from discord.ui import View, Button, Modal, TextInput
+from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import socket
 import asyncio
 import os
 import sys
@@ -214,6 +217,22 @@ async def send_message_with_file(
 
 if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+class PingHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"Pong")
+
+def run_http_server():
+    port = int(os.environ.get("PORT", 10000))  # Render автоматически назначает PORT
+    server = HTTPServer(("", port), PingHandler)
+    print(f"🌐 HTTP-сервер запущен на порту {port}")
+    server.serve_forever()
+
+Thread(target=run_http_server, daemon=True).start()
+
 
 bot.run(os.getenv("DISCORD_TOKEN"))
 

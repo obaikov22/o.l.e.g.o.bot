@@ -131,8 +131,7 @@ class CreateTicketModal(Modal, title="🎫 Создание тикета"):
 @tree.command(name="admin_panel", description="Открыть панель управления")
 @is_admin()
 async def admin_panel(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    await interaction.followup.send("🔧 Панель администратора", view=AdminPanel(), ephemeral=True)
+    await interaction.response.send_message("🔧 Панель администратора", view=AdminPanel(), ephemeral=True)
 
 @tree.command(name="setup_ticket_message", description="Создать сообщение с тикет-реакцией")
 @is_admin()

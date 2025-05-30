@@ -117,7 +117,8 @@ class CreateTicketModal(Modal, title="🎫 Создание тикета"):
 @tree.command(name="admin_panel", description="Открыть панель управления")
 @is_admin()
 async def admin_panel(interaction: discord.Interaction):
-    await interaction.response.send_message("🔧 Панель администратора", view=AdminPanel(), ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send("🔧 Панель администратора", view=AdminPanel(), ephemeral=True)
 
 # 🧷 Команда: разместить сообщение с реакцией
 @tree.command(name="setup_ticket_message", description="Разместить сообщение с тикет-реакцией")
@@ -175,7 +176,8 @@ async def close_ticket(interaction: discord.Interaction):
             del active_tickets[user_id]
             break
 
-    await interaction.response.send_message("Тикет будет закрыт через 5 секунд...", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+    await interaction.followup.send("Тикет будет закрыт через 5 секунд...", ephemeral=True)
     await asyncio.sleep(5)
     await channel.delete()
 
